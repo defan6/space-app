@@ -1,0 +1,15 @@
+generic_error:
+  description: Generic Error
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          message:
+            type: string
+            description: A description of error
+            example: "An unexpected error occurred. Please try again later"
+          error_code:
+            type: string
+            description: A code that represents the specific error
+            example: "SERVER_ERROR_001"

@@ -1,0 +1,6 @@
+type: object
+properties:
+  order_uuid:
+    type: string
+  total_price:
+    type: number

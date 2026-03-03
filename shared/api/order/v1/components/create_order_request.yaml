@@ -1,0 +1,8 @@
+type: object
+properties:
+  user_uuid:
+    type: string
+  part_uuids:
+    type: array
+    items:
+      type: string

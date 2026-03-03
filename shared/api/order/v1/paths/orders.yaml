@@ -1,0 +1,55 @@
+get:
+  summary: Get Orders
+  operationId: GetOrders
+  tags: Order
+  responses:
+    '200':
+      description: Orders received successfully
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../components/get_order_response.yaml"
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../components/errors/internal_server_error.yaml"
+post:
+  summary: Create Order
+  operationId: CreateOrder
+  tags: Order
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../components/create_order_request.yaml"
+  responses:
+    '201':
+      description: Orders created successfully
+      content:
+        application/json:
+          schema:
+            items:
+              $ref: "../components/create_order_response.yaml"
+    '409':
+      description: Orders failed to create
+      content:
+        application/json:
+          schema:
+            $ref: "../components/errors/conflict_error.yaml"
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../components/errors/internal_server_error.yaml"
+    default:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: "../components/errors/generic_error.yaml"
