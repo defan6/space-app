@@ -182,8 +182,21 @@ func (h *Handler) GetOrder(ctx context.Context, params orderV1.GetOrderParams) (
 // Get Orders.
 //
 // GET /api/v1/orders
-func (h *Handler) GetOrders(ctx context.Context) (r orderV1.GetOrdersRes, _ error) {
-	return r, ht.ErrNotImplemented
+func (h *Handler) GetOrders(ctx context.Context) (orderV1.GetOrdersRes, error) {
+	response := &orderV1.GetOrdersResponse{}
+	for _, o := range h.storage.storage {
+		ores := orderV1.GetOrderResponse{
+			OrderUUID:       orderV1.NewOptString(o.OrderUUID.String()),
+			UserUUID:        orderV1.NewOptString(o.UserUUID.String()),
+			PartUuids:       o.Parts,
+			TotalPrice:      orderV1.NewOptFloat64(o.TotalPrice),
+			TransactionUUID: orderV1.NewOptString(o.TransactionUUID.String()),
+			PaymentMethod:   orderV1.NewOptPaymentMethod(o.PaymentMethod),
+			Status:          orderV1.NewOptOrderStatus(o.Status),
+		}
+		*response = append(*response, ores)
+	}
+	return response, nil
 }
 
 // PayOrder implements PayOrder operation.

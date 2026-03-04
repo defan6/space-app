@@ -9,9 +9,7 @@ get:
       content:
         application/json:
           schema:
-            type: array
-            items:
-              $ref: "../components/get_order_response.yaml"
+            $ref: "../components/get_orders_response.yaml"
     '500':
       description: Internal Server Error
       content:
