@@ -1,16 +1,10 @@
 parameters:
   - $ref: "../params/uuid.yaml"
-delete:
+post:
   summary: Cancel Order
   operationId: CancelOrder
   tags:
     - Order
-  requestBody:
-    required: true
-    content:
-      application/json:
-        schema:
-          $ref: "../components/cancel_order_request.yaml"
   responses:
     '204':
       description: Order cancelled
@@ -20,6 +14,18 @@ delete:
         application/json:
           schema:
             $ref: "../components/errors/not_found_error.yaml"
+    '400':
+      description: invalid uuid
+      content:
+        application/json:
+          schema:
+            $ref: "../components/errors/bad_request_error.yaml"
+    '409':
+      description: order already cancelled
+      content:
+        application/json:
+          schema:
+            $ref: "../components/errors/conflict_error.yaml"
     '500':
       description: Internal Server Error
       content:

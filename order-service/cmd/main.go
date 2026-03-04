@@ -18,7 +18,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
-	ht "github.com/ogen-go/ogen/http"
 )
 
 type Order struct {
@@ -105,8 +104,45 @@ func main() {
 // Cancel Order.
 //
 // DELETE /api/v1/orders/{uuid}/cancel
-func (h *Handler) CancelOrder(ctx context.Context, req *orderV1.CancelOrderRequest, params orderV1.CancelOrderParams) (r orderV1.CancelOrderRes, _ error) {
-	return r, ht.ErrNotImplemented
+func (h *Handler) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
+	id := params.UUID
+	uuidFromId, err := uuid.Parse(id)
+	if err != nil {
+		return &orderV1.BadRequestError{
+			Message:   fmt.Sprintf("invalid uuid: %s", id),
+			ErrorCode: "INVALID_ORDER_UUID",
+		}, nil
+	}
+
+	h.storage.mu.RLock()
+	order, ok := h.storage.storage[uuidFromId]
+	h.storage.mu.RUnlock()
+	if !ok {
+		return &orderV1.NotFoundError{
+			Message:   fmt.Sprintf("order with uuid %s not found", uuidFromId),
+			ErrorCode: "ORDER_NOT_FOUND",
+		}, nil
+	}
+
+	if order.Status == orderV1.OrderStatusCANCELLED {
+		return &orderV1.ConflictError{
+			Message:   fmt.Sprintf("order with uuid %s already cancelled", uuidFromId),
+			ErrorCode: "ORDER_ALREADY_CANCELLED",
+		}, nil
+	}
+
+	if order.Status == orderV1.OrderStatusPAID {
+		return &orderV1.ConflictError{
+			Message:   fmt.Sprintf("order with uuid %s already payed", uuidFromId),
+			ErrorCode: "ORDER_ALREADY_PAYED",
+		}, nil
+	}
+
+	order.Status = orderV1.OrderStatusCANCELLED
+	h.storage.mu.Lock()
+	h.storage.storage[uuidFromId] = order
+	defer h.storage.mu.Unlock()
+	return &orderV1.CancelOrderNoContent{}, nil
 }
 
 // CreateOrder implements CreateOrder operation.
@@ -122,7 +158,7 @@ func (h *Handler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderReque
 	userUUID, err := uuid.Parse(req.UserUUID.Value)
 	if err != nil {
 		return &orderV1.BadRequestError{
-			Message:   fmt.Sprintf("Invalid user uuid: %s", userUUID),
+			Message:   fmt.Sprintf("Invalid user uuid: %s", req.UserUUID),
 			ErrorCode: "INVALID_USER_UUID",
 		}, nil
 	}
@@ -154,14 +190,14 @@ func (h *Handler) GetOrder(ctx context.Context, params orderV1.GetOrderParams) (
 	uuidFromId, err := uuid.Parse(id)
 	if err != nil {
 		return &orderV1.BadRequestError{
-			Message:   fmt.Sprintf("invalid UUID: %s", uuidFromId),
+			Message:   fmt.Sprintf("invalid uuid: %s", id),
 			ErrorCode: "INVALID_UUID",
 		}, nil
 	}
 	order, ok := h.storage.storage[uuidFromId]
 	if !ok {
 		return &orderV1.NotFoundError{
-			Message:   fmt.Sprintf("order with id %s not found", uuidFromId),
+			Message:   fmt.Sprintf("order with uuid %s not found", uuidFromId),
 			ErrorCode: "ORDER_NOT_FOUND",
 		}, nil
 	}
@@ -204,6 +240,48 @@ func (h *Handler) GetOrders(ctx context.Context) (orderV1.GetOrdersRes, error) {
 // Pay Order.
 //
 // POST /api/v1/orders/{uuid}/pay
-func (h *Handler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (r orderV1.PayOrderRes, _ error) {
-	return r, ht.ErrNotImplemented
+func (h *Handler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
+	id := params.UUID
+	uuidFromID, err := uuid.Parse(id)
+	if err != nil {
+		return &orderV1.BadRequestError{
+			Message:   fmt.Sprintf("invalid uuid: %s", id),
+			ErrorCode: "INVALID_ORDER_UUID",
+		}, nil
+	}
+
+	h.storage.mu.RLock()
+	order, ok := h.storage.storage[uuidFromID]
+	h.storage.mu.RUnlock()
+	if !ok {
+		return &orderV1.NotFoundError{
+			Message:   fmt.Sprintf("order with uuid %s not found", order),
+			ErrorCode: "ORDER_NOT_FOUND",
+		}, nil
+	}
+
+	if order.Status == orderV1.OrderStatusPAID {
+		return &orderV1.ConflictError{
+			Message:   fmt.Sprintf("order with uuid %s already paid", uuidFromID),
+			ErrorCode: "ORDER_ALREADY_PAID",
+		}, nil
+	}
+
+	if order.Status == orderV1.OrderStatusCANCELLED {
+		return &orderV1.ConflictError{
+			Message:   fmt.Sprintf("order with uuid %s already cancelled", uuidFromID),
+			ErrorCode: "ORDER_ALREADY_CANCELLED",
+		}, nil
+	}
+	trUUID := uuid.New()
+	order.Status = orderV1.OrderStatusPAID
+	order.TransactionUUID = trUUID
+	order.PaymentMethod = req.PaymentMethod.Value
+	h.storage.mu.Lock()
+	defer h.storage.mu.Unlock()
+	h.storage.storage[order.OrderUUID] = order
+	response := &orderV1.PayOrderResponse{
+		TransactionUUID: orderV1.NewOptString(trUUID.String()),
+	}
+	return response, nil
 }
