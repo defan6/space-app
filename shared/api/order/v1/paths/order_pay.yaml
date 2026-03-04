@@ -1,8 +1,8 @@
 parameters:
   - $ref: "../params/uuid.yaml"
-delete:
-  summary: Cancel Order
-  operationId: CancelOrder
+post:
+  summary: Pay Order
+  operationId: PayOrder
   tags:
     - Order
   requestBody:
@@ -10,16 +10,26 @@ delete:
     content:
       application/json:
         schema:
-          $ref: "../components/cancel_order_request.yaml"
+          $ref: "../components/pay_order_request.yaml"
   responses:
-    '204':
-      description: Order cancelled
+    '200':
+      description: Order payed
+      content:
+        application/json:
+          schema:
+            $ref: "../components/pay_order_response.yaml"
     '404':
       description: Order not found
       content:
         application/json:
           schema:
             $ref: "../components/errors/not_found_error.yaml"
+    '409':
+      description: Order already payed
+      content:
+        application/json:
+          schema:
+            $ref: "../components/errors/conflict_error.yaml"
     '500':
       description: Internal Server Error
       content:

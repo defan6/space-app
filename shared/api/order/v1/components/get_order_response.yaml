@@ -13,6 +13,6 @@ properties:
   transaction_uuid:
     type: string
   payment_method:
-    $ref: "./enums/payment-method.yaml"
+    $ref: "./enums/payment_method.yaml"
   status:
-    $ref: "./enums/order-status.yaml"
+    $ref: "./enums/order_status.yaml"

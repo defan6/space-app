@@ -3,7 +3,8 @@ parameters:
 get:
   summary: Get Order
   operationId: GetOrder
-  tags: Order
+  tags:
+    - Order
   responses:
     '200':
       description: Order exists

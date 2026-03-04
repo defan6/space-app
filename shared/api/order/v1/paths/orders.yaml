@@ -1,7 +1,8 @@
 get:
   summary: Get Orders
   operationId: GetOrders
-  tags: Order
+  tags:
+    - Order
   responses:
     '200':
       description: Orders received successfully
@@ -20,7 +21,8 @@ get:
 post:
   summary: Create Order
   operationId: CreateOrder
-  tags: Order
+  tags:
+   - Order
   requestBody:
     required: true
     content:
@@ -33,8 +35,7 @@ post:
       content:
         application/json:
           schema:
-            items:
-              $ref: "../components/create_order_response.yaml"
+            $ref: "../components/create_order_response.yaml"
     '409':
       description: Orders failed to create
       content:

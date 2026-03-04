@@ -21,9 +21,9 @@ vars:
   REDOCLY: 'npx --no-install redocly'
 
   # Пути к API также делаем относительными
-  OPEN_API_ORDER_V1_BASE: './api/weather/v1/weather.openapi.yaml'
-  OPEN_API_ORDER_V1_BUNDLE: './api/bundles/weather.openapi.v1.bundle.yaml'
-  OPEN_API_FILES: './api/bundles'
+  OPEN_API_ORDER_V1_BASE: './shared/api/order/v1/order.openapi.yaml'
+  OPEN_API_ORDER_V1_BUNDLE: './shared/api/bundles/order/order.openapi.v1.bundle.yaml'
+  OPEN_API_FILES: './shared/api/bundles/order'
 
 
 tasks:
@@ -90,7 +90,7 @@ tasks:
     desc: Собрать все схемы OpenAPI в общие файлы через локальный redocly
     deps: [ redocly-cli:install ]
     cmds:
-      - task: redocly-cli:weather-v1-bundle
+      - task: redocly-cli:order-v1-bundle
 
   ogen:install:
     desc: "Скачивает ogen в папку bin"

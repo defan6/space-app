@@ -1,6 +1,0 @@
-order-status:
-  type: string
-  enum:
-    - PAID
-    - PENDING_PAYMENT
-    - CANCELLED

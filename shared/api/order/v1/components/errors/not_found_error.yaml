@@ -1,18 +1,15 @@
-conflict_error:
-  description: Not Found Error
-  content:
-    application/json:
-      schema:
-        type: object
-        properties:
-          message:
-            type: string
-            description: A description of error
-            example: "Order not found"
-          error_code:
-            type: string
-            description: A code that represents the specific error
-            example: "SERVER_ERROR_001"
-          required:
-            - message
-            - error_code
+description: Not Found Error
+type: object
+required:
+  - message
+  - error_code
+
+properties:
+  message:
+    type: string
+    description: A description of error
+    example: "Order not found"
+  error_code:
+    type: string
+    description: A code that represents the specific error
+    example: "SERVER_ERROR_001"
