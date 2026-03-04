@@ -5,7 +5,7 @@ info:
   description: API for Order Service
 x-ogen:
   target: ./shared/pkg/openapi/order/v1
-  package: order_v1
+  package: orderV1
   clean: true
 
 tags:
