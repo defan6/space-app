@@ -10,11 +10,40 @@ option go_package = "github.com/defan6/space-app/shared/pkg/proto/inventory/v1;i
 service InventoryService {
   rpc GetPart(GetPartRequest) returns (GetPartResponse);
   rpc GetParts(GetPartsRequest) returns (GetPartsResponse);
+  rpc CreatePart(CreatePartRequest) returns (CreatePartResponse);
 }
 
 // GetPartRequest represents a request to GetPart
 message GetPartRequest {
   string uuid = 1;
+}
+
+// CreatePartRequest represents a request to CreatePart
+message CreatePartRequest {
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  int64 stock_quantity = 5;
+  Category category = 6;
+  Dimensions dimensions = 7;
+  Manufacturer manufacturer = 8;
+  repeated string tags = 9;
+  map<string, Value> metadata = 10;
+}
+
+// CreatePartResponse represents a request to CreatePart
+message CreatePartResponse {
+  string uuid = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  int64 stock_quantity = 5;
+  Category category = 6;
+  Dimensions dimensions = 7;
+  Manufacturer manufacturer = 8;
+  repeated string tags = 9;
+  map<string, Value> metadata = 10;
+  google.protobuf.Timestamp created_at = 11;
 }
 
 // GetPartsRequest represents a request to GetParts

@@ -1,0 +1,11 @@
+package models
+
+type Category string
+
+const (
+	CATEGORY_UNKNOWN  Category = "CATEGORY_UNKNOWN"
+	CATEGORY_ENGINE   Category = "CATEGORY_ENGINE"
+	CATEGORY_FUEL     Category = "CATEGORY_FUEL"
+	CATEGORY_PORTHOLE Category = "CATEGORY_PORTHOLE"
+	CATEGORY_WING     Category = "CATEGORY_WING"
+)
