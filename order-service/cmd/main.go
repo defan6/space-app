@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -53,7 +54,6 @@ func NewCache() *Cache {
 }
 
 const (
-	urlParamOrderID   = "id"
 	port              = 8080
 	readHeaderTimeout = 10 * time.Second
 	shutdownTimeout   = 5 * time.Second
@@ -104,7 +104,7 @@ func main() {
 // Cancel Order.
 //
 // DELETE /api/v1/orders/{uuid}/cancel
-func (h *Handler) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
+func (h *Handler) CancelOrder(_ context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
 	id := params.UUID
 	uuidFromId, err := uuid.Parse(id)
 	if err != nil {
@@ -150,15 +150,24 @@ func (h *Handler) CancelOrder(ctx context.Context, params orderV1.CancelOrderPar
 // Create Order.
 //
 // POST /api/v1/orders
-func (h *Handler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
+func (h *Handler) CreateOrder(_ context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
 	newUUID := uuid.New()
 	h.storage.mu.Lock()
 	defer h.storage.mu.Unlock()
-	totalPrice := rand.Float64() * float64(rand.Intn(9000))
+	maxPrice := big.NewInt(9000)
+	randomInt, err := rand.Int(rand.Reader, maxPrice)
+	if err != nil {
+		log.Printf("error generating int")
+		return &orderV1.InternalServerError{
+			Message:   "Internal Server Error",
+			ErrorCode: "INTERNAL_SERVER_ERROR",
+		}, nil
+	}
+	totalPrice := float64(randomInt.Int64())
 	userUUID, err := uuid.Parse(req.UserUUID.Value)
 	if err != nil {
 		return &orderV1.BadRequestError{
-			Message:   fmt.Sprintf("Invalid user uuid: %s", req.UserUUID),
+			Message:   fmt.Sprintf("Invalid user uuid: %s", req.UserUUID.Value),
 			ErrorCode: "INVALID_USER_UUID",
 		}, nil
 	}
@@ -183,7 +192,7 @@ func (h *Handler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderReque
 // Get Order.
 //
 // GET /api/v1/orders/{uuid}
-func (h *Handler) GetOrder(ctx context.Context, params orderV1.GetOrderParams) (orderV1.GetOrderRes, error) {
+func (h *Handler) GetOrder(_ context.Context, params orderV1.GetOrderParams) (orderV1.GetOrderRes, error) {
 	h.storage.mu.RLock()
 	defer h.storage.mu.RUnlock()
 	id := params.UUID
@@ -218,7 +227,7 @@ func (h *Handler) GetOrder(ctx context.Context, params orderV1.GetOrderParams) (
 // Get Orders.
 //
 // GET /api/v1/orders
-func (h *Handler) GetOrders(ctx context.Context) (orderV1.GetOrdersRes, error) {
+func (h *Handler) GetOrders(_ context.Context) (orderV1.GetOrdersRes, error) {
 	response := &orderV1.GetOrdersResponse{}
 	for _, o := range h.storage.storage {
 		ores := orderV1.GetOrderResponse{
@@ -240,7 +249,7 @@ func (h *Handler) GetOrders(ctx context.Context) (orderV1.GetOrdersRes, error) {
 // Pay Order.
 //
 // POST /api/v1/orders/{uuid}/pay
-func (h *Handler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
+func (h *Handler) PayOrder(_ context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
 	id := params.UUID
 	uuidFromID, err := uuid.Parse(id)
 	if err != nil {
@@ -255,7 +264,7 @@ func (h *Handler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, pa
 	h.storage.mu.RUnlock()
 	if !ok {
 		return &orderV1.NotFoundError{
-			Message:   fmt.Sprintf("order with uuid %s not found", order),
+			Message:   fmt.Sprintf("order with uuid %s not found", order.OrderUUID),
 			ErrorCode: "ORDER_NOT_FOUND",
 		}, nil
 	}

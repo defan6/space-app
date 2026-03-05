@@ -8,6 +8,9 @@ vars:
   GOFUMPT_VERSION: 'v0.8.0'
   OGEN_VERSION: 'v1.14.0'
   YQ_VERSION: 'v4.45.2'
+  BUF_VERSION: '1.53.0'
+  PROTOC_GEN_GO_VERSION: 'v1.36.6'
+  PROTOC_GEN_GO_GRPC_VERSION: 'v1.5.1'
 
   # Используем относительные пути. Это критично для Windows + Git Bash.
   BIN_DIR: '{{.USER_WORKING_DIR}}/bin'
@@ -24,6 +27,9 @@ vars:
   OPEN_API_ORDER_V1_BASE: './shared/api/order/v1/order.openapi.yaml'
   OPEN_API_ORDER_V1_BUNDLE: './shared/api/bundles/order/order.openapi.v1.bundle.yaml'
   OPEN_API_FILES: './shared/api/bundles/order'
+  BUF: '{{.BIN_DIR}}/buf'
+  PROTOC_GEN_GO: '{{.BIN_DIR}}/protoc-gen-go'
+  PROTOC_GEN_GO_GRPC: '{{.BIN_DIR}}/protoc-gen-go-grpc'
 
 
 tasks:
@@ -70,7 +76,11 @@ tasks:
     desc: "Запускает golangci-lint для всех модулей"
     deps: [ install-golangci-lint ]
     cmds:
-      - '"{{.GOLANGCI_LINT}}" run ./... --config=.golangci.yml'
+      - |
+        for dir in inventory-service order-service payment-service shared; do
+          echo "Линтинг $dir..."
+          (cd "$dir" && "{{.GOLANGCI_LINT}}" run ./... --config="../.golangci.yml")
+        done
 
   redocly-cli:install:
     desc: Установить локально Redocly CLI
@@ -127,4 +137,44 @@ tasks:
           echo '📦 Installing yq...'
           GOBIN={{.BIN_DIR}} go install github.com/mikefarah/yq/v4@{{.YQ_VERSION}}
         }
+  
+
+  install-buf:
+    desc: "Устанавливает Buf в каталог bin"
+    cmds:
+      - |
+        mkdir -p {{.BIN_DIR}}
+        [ -f {{.BUF}} ] || {
+          echo '📦 Устанавливаем buf {{.BUF_VERSION}}...'
+          GOBIN={{.BIN_DIR}} go install github.com/bufbuild/buf/cmd/buf@v{{.BUF_VERSION}}
+        }
+    status:
+      - test -x {{.BUF}}
+
+  proto:install-plugins:
+    desc: "Устанавливает protoc плагины в каталог bin"
+    cmds:
+      - |
+        [ -f {{.PROTOC_GEN_GO}} ] || {
+          echo '📦 Installing protoc-gen-go...'
+          GOBIN={{.BIN_DIR}} go install google.golang.org/protobuf/cmd/protoc-gen-go@{{.PROTOC_GEN_GO_VERSION}}
+        }
+        [ -f {{.PROTOC_GEN_GO_GRPC}} ] || {
+          echo '📦 Installing protoc-gen-go-grpc...'
+          GOBIN={{.BIN_DIR}} go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@{{.PROTOC_GEN_GO_GRPC_VERSION}}
+        }
+
+  proto:lint:
+    deps: [ install-buf, proto:install-plugins ]
+    desc: Проверка .proto-файлов на соответствие стилю
+    dir: shared/proto
+    cmds:
+      - '"{{.BUF}}" lint'
+
+  proto:gen:
+    deps: [ install-buf, proto:install-plugins, proto:lint ]
+    desc: Генерация Go-кода из .proto
+    dir: shared/proto
+    cmds:
+      - '"{{.BUF}}" generate'
 
