@@ -12,6 +12,7 @@ vars:
   PROTOC_GEN_GO_GRPC_VERSION: 'v1.5.1'
   PROTOC_GEN_GRPC_GATEWAY_VERSION: 'v2.26.3'
   PROTOC_GEN_VALIDATE_VERSION: 'v1.2.1'
+  PROTOC_GEN_OPENAPIV2_VERSION: 'v2.26.3'
 
   BIN_DIR: '{{.USER_WORKING_DIR}}/bin'
   GOLANGCI_LINT: '{{.BIN_DIR}}/golangci-lint'
@@ -32,6 +33,7 @@ vars:
   PROTOC_GEN_GO_GRPC: '{{.BIN_DIR}}/protoc-gen-go-grpc'
   PROTOC_GEN_GRPC_GATEWAY: '{{.BIN_DIR}}/protoc-gen-grpc-gateway'
   PROTOC_GEN_VALIDATE: '{{.BIN_DIR}}/protoc-gen-validate'
+  PROTOC_GEN_OPENAPIV2: '{{.BIN_DIR}}/protoc-gen-openapiv2'
 
 
 tasks:
@@ -173,12 +175,23 @@ tasks:
           echo '📦 Installing protoc-gen-validate...'
           GOBIN={{.BIN_DIR}} go install github.com/envoyproxy/protoc-gen-validate@{{.PROTOC_GEN_VALIDATE_VERSION}}
         }
+        [ -f {{.PROTOC_GEN_OPENAPIV2}} ] || {
+          echo '📦 Installing protoc-gen-openapiv2...'
+          GOBIN={{.BIN_DIR}} go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@{{.PROTOC_GEN_OPENAPIV2_VERSION}}
+        }
+  proto:gen-openapi:
+    desc: "Генерация OpenAPI для inventory и payment"
+    deps: [ install-buf, proto:install-plugins ]
+    dir: shared/proto
+    cmds:
+      - '"{{.BUF}}" generate --template buf.gen.inventory.yaml --path ./inventory/v1'
+      - '"{{.BUF}}" generate --template buf.gen.payment.yaml --path ./payment/v1'
   proto:update-deps:
     deps: [ install-buf ]
     desc: Обновляет зависимости protobuf из удаленных репозиториев (googleapis и т.д.)
     dir: shared/proto
     cmds:
-        - '"{{.BUF}}" dep update'
+      - '"{{.BUF}}" dep update'
 
   proto:lint:
     deps: [ install-buf, proto:install-plugins, proto:update-deps ]

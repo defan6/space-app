@@ -1,0 +1,8 @@
+version: v2
+plugins:
+  - local: ../../bin/protoc-gen-openapiv2
+    out: ../api/payment/v1/swagger
+    opt:
+      - allow_merge=true
+      - merge_file_name=payment
+      - json_names_for_fields=false
