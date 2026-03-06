@@ -272,6 +272,9 @@ func main() {
 }
 
 func (s *InventoryService) GetPart(_ context.Context, r *inventoryV1.GetPartRequest) (*inventoryV1.GetPartResponse, error) {
+	if err := r.ValidateAll(); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 	s.storage.mu.RLock()
 	defer s.storage.mu.RUnlock()
 	stringUUID := r.Uuid
@@ -300,6 +303,9 @@ func (s *InventoryService) GetPart(_ context.Context, r *inventoryV1.GetPartRequ
 }
 
 func (s *InventoryService) GetParts(_ context.Context, r *inventoryV1.GetPartsRequest) (*inventoryV1.GetPartsResponse, error) {
+	if err := r.ValidateAll(); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 	parts := make([]*models.Part, 0, 10)
 
 	s.storage.mu.Lock()
@@ -361,6 +367,9 @@ func (s *InventoryService) GetParts(_ context.Context, r *inventoryV1.GetPartsRe
 }
 
 func (s *InventoryService) CreatePart(_ context.Context, r *inventoryV1.CreatePartRequest) (*inventoryV1.CreatePartResponse, error) {
+	if err := r.ValidateAll(); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 	newUUID := uuid.New()
 	part := &models.Part{
 		ID:            newUUID,
