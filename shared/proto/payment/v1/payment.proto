@@ -5,6 +5,7 @@ package payment.v1;
 
 option go_package = "github.com/defan6/space-app/shared/pkg/proto/payment/v1;payment_v1";
 import "google/api/annotations.proto";
+import "validate/validate.proto";
 
 
 
@@ -19,9 +20,9 @@ service PaymentService {
 
 // PayOrderRequest represents a request for pay order
 message PayOrderRequest {
-  string order_uuid = 1;
-  string user_uuid = 2;
-  PaymentMethod payment_method = 3;
+  string order_uuid = 1 [(validate.rules).string.uuid = true];
+  string user_uuid = 2 [(validate.rules).string.uuid = true];
+  PaymentMethod payment_method = 3 [(validate.rules).enum = {defined_only: true}];
 }
 
 // PayOrderResponse represents a response for pay order

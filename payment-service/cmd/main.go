@@ -16,8 +16,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -35,6 +37,9 @@ func NewPaymentService() *PaymentService {
 }
 
 func (p *PaymentService) PayOrder(_ context.Context, r *paymentV1.PayOrderRequest) (*paymentV1.PayOrderResponse, error) {
+	if err := r.ValidateAll(); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 	timer := time.NewTimer(2 * time.Second)
 	<-timer.C
 	trUUID := uuid.New().String()
