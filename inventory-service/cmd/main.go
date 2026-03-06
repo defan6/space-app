@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,8 +16,10 @@ import (
 	"github.com/defan6/space-app/inventory-service/pkg/models"
 	inventoryV1 "github.com/defan6/space-app/shared/pkg/proto/inventory/v1"
 	"github.com/google/uuid"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -23,6 +27,7 @@ import (
 
 const (
 	grpcPort        = 50052
+	httpPort        = 8083
 	shutdownTimeout = 5 * time.Second
 )
 
@@ -205,15 +210,55 @@ func main() {
 		}
 	}()
 
+	var gatewayServer *http.Server
+
+	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		mux := runtime.NewServeMux()
+
+		opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+
+		err = inventoryV1.RegisterInventoryServiceHandlerFromEndpoint(
+			ctx,
+			mux,
+			fmt.Sprintf("localhost:%d", grpcPort),
+			opts,
+		)
+		if err != nil {
+			log.Printf("Failed to register grpc gateway: %v\n", err)
+			return
+		}
+
+		gatewayServer = &http.Server{
+			Addr:              fmt.Sprintf("localhost:%d", httpPort),
+			Handler:           mux,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		log.Printf("http server with grpc gateway listening on port %d\n", httpPort)
+		err = gatewayServer.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("failed to serve http: %d\n", httpPort)
+		}
+	}()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-
+	log.Printf("Stopping servers...")
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
+	timer := time.NewTimer(2 * time.Second)
+	<-timer.C
 	done := make(chan struct{})
 
 	go func() {
+		if gatewayServer != nil {
+			err = gatewayServer.Shutdown(ctx)
+			if err != nil {
+				log.Printf("failed to shutdown http server on port %d, %v\n", httpPort, err)
+			}
+		}
 		s.GracefulStop()
 		close(done)
 	}()

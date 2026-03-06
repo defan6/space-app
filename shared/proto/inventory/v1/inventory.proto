@@ -4,13 +4,28 @@ syntax = "proto3";
 package inventory.v1;
 
 import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
 
 option go_package = "github.com/defan6/space-app/shared/pkg/proto/inventory/v1;inventory_v1";
 
 service InventoryService {
-  rpc GetPart(GetPartRequest) returns (GetPartResponse);
-  rpc GetParts(GetPartsRequest) returns (GetPartsResponse);
-  rpc CreatePart(CreatePartRequest) returns (CreatePartResponse);
+  rpc GetPart(GetPartRequest) returns (GetPartResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/inventory/search/{uuid}"
+    };
+  }
+  rpc GetParts(GetPartsRequest) returns (GetPartsResponse){
+    option (google.api.http) = {
+      post: "/api/v1/inventory/search"
+      body: "*"
+    };
+  }
+  rpc CreatePart(CreatePartRequest) returns (CreatePartResponse){
+    option (google.api.http) = {
+      post: "/api/v1/inventory"
+      body: "*"
+    };
+  }
 }
 
 // GetPartRequest represents a request to GetPart
