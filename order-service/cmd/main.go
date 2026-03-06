@@ -63,15 +63,26 @@ func main() {
 	r := chi.NewRouter()
 	cache := NewCache()
 	h := NewHandler(cache)
-	orderOpenAPIServer, err := orderV1.NewServer(h)
+	orderServer, err := orderV1.NewServer(h)
 	if err != nil {
-		panic("Failed to start order OPEN API server")
+		panic("Failed to start order server")
 	}
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Mount("/", orderOpenAPIServer)
+	r.Mount("/", orderServer)
 
+	fileServer := http.FileServer(http.Dir("../shared/api/order/v1/swagger"))
+	r.Handle("/swagger-ui.html", fileServer)
+	r.Handle("/order.swagger.json", fileServer)
+
+	r.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			http.Redirect(w, r, "/swagger-ui.html", http.StatusMovedPermanently)
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	}))
 	server := &http.Server{
 		Addr:              net.JoinHostPort("localhost", fmt.Sprintf("%d", port)),
 		Handler:           r,

@@ -181,7 +181,7 @@ tasks:
         }
   proto:gen-openapi:
     desc: "Генерация OpenAPI для inventory и payment"
-    deps: [ install-buf, proto:install-plugins ]
+    deps: [ install-buf, proto:install-plugins, proto:gen ]
     dir: shared/proto
     cmds:
       - '"{{.BUF}}" generate --template buf.gen.inventory.yaml --path ./inventory/v1'

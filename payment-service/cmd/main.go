@@ -80,7 +80,6 @@ func main() {
 		defer cancel()
 
 		mux := runtime.NewServeMux()
-
 		opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 
 		err = paymentV1.RegisterPaymentServiceHandlerFromEndpoint(
@@ -89,6 +88,23 @@ func main() {
 			fmt.Sprintf("localhost:%d", grpcPort),
 			opts,
 		)
+		fileServer := http.FileServer(http.Dir("../shared/api/payment/v1/swagger"))
+
+		httpMux := http.NewServeMux()
+
+		httpMux.Handle("/api/v1/payment", mux)
+		httpMux.Handle("/swagger-ui.html", fileServer)
+		httpMux.Handle("/payment.swagger.json", fileServer)
+
+		httpMux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" {
+				http.Redirect(w, r, "/swagger-ui.html", http.StatusMovedPermanently)
+				return
+			}
+
+			fileServer.ServeHTTP(w, r)
+		}))
+
 		if err != nil {
 			log.Printf("Failed to register grpc gateway: %v\n", err)
 			return
@@ -96,7 +112,7 @@ func main() {
 
 		gatewayServer = &http.Server{
 			Addr:              fmt.Sprintf("localhost:%d", httpPort),
-			Handler:           mux,
+			Handler:           httpMux,
 			ReadHeaderTimeout: 10 * time.Second,
 		}
 

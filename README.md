@@ -1,0 +1,1 @@
+swagger-cli bundle  shared/api/bundles/order/order.openapi.v1.bundle.yaml -o shared/api/order/v1/swagger/order.swagger.json

@@ -18,14 +18,3 @@ plugins:
     opt:
       - paths=source_relative
       - lang=go
-  - local: ../../bin/protoc-gen-openapiv2
-    out: ../api/inventory/v1/swagger
-    opt:
-      - logtostderr=true
-      - allow_merge=true
-      - merge_file_name=inventory
-
-  - local: ../../bin/protoc-gen-openapiv2
-    opt:
-      - logtostderr=true
-      - allow_merge=true

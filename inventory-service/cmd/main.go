@@ -230,9 +230,26 @@ func main() {
 			return
 		}
 
+		fileServer := http.FileServer(http.Dir("../shared/api/inventory/v1/swagger"))
+
+		httpMux := http.NewServeMux()
+
+		httpMux.Handle("/api/v1/inventory", mux)
+
+		httpMux.Handle("/swagger-ui.html", fileServer)
+		httpMux.Handle("/inventory.swagger.json", fileServer)
+
+		httpMux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" {
+				http.Redirect(w, r, "/swagger-ui.html", http.StatusMovedPermanently)
+				return
+			}
+			fileServer.ServeHTTP(w, r)
+		}))
+
 		gatewayServer = &http.Server{
 			Addr:              fmt.Sprintf("localhost:%d", httpPort),
-			Handler:           mux,
+			Handler:           httpMux,
 			ReadHeaderTimeout: 10 * time.Second,
 		}
 		log.Printf("http server with grpc gateway listening on port %d\n", httpPort)
