@@ -2,3 +2,5 @@ type: object
 properties:
   payment_method:
     $ref: "./enums/payment_method.yaml"
+  user_uuid:
+    type: string

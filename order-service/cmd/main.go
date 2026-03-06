@@ -16,9 +16,12 @@ import (
 	"time"
 
 	orderV1 "github.com/defan6/space-app/shared/pkg/openapi/order/v1"
+	paymentV1 "github.com/defan6/space-app/shared/pkg/proto/payment/v1"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Order struct {
@@ -36,13 +39,26 @@ type Cache struct {
 	mu      *sync.RWMutex
 }
 
-type Handler struct {
-	storage *Cache
+type PaymentClient struct {
+	client paymentV1.PaymentServiceClient
 }
 
-func NewHandler(storage *Cache) *Handler {
+func NewPaymentClient(conn *grpc.ClientConn) *PaymentClient {
+	client := paymentV1.NewPaymentServiceClient(conn)
+	return &PaymentClient{
+		client: client,
+	}
+}
+
+type Handler struct {
+	paymentClient *PaymentClient
+	storage       *Cache
+}
+
+func NewHandler(storage *Cache, paymentClient *PaymentClient) *Handler {
 	return &Handler{
-		storage: storage,
+		storage:       storage,
+		paymentClient: paymentClient,
 	}
 }
 
@@ -54,15 +70,29 @@ func NewCache() *Cache {
 }
 
 const (
-	port              = 8080
-	readHeaderTimeout = 10 * time.Second
-	shutdownTimeout   = 5 * time.Second
+	port                  = 8080
+	readHeaderTimeout     = 10 * time.Second
+	shutdownTimeout       = 5 * time.Second
+	paymentServiceAddress = 50051
 )
 
 func main() {
 	r := chi.NewRouter()
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("localhost:%d", paymentServiceAddress),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("failed to create new grpc client on port: %d", paymentServiceAddress)
+	}
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			log.Printf("failed to close connection on port: %d", paymentServiceAddress)
+		}
+	}()
 	cache := NewCache()
-	h := NewHandler(cache)
+	paymentClient := NewPaymentClient(conn)
+
+	h := NewHandler(cache, paymentClient)
 	orderServer, err := orderV1.NewServer(h)
 	if err != nil {
 		panic("Failed to start order server")
@@ -260,18 +290,18 @@ func (h *Handler) GetOrders(_ context.Context) (orderV1.GetOrdersRes, error) {
 // Pay Order.
 //
 // POST /api/v1/orders/{uuid}/pay
-func (h *Handler) PayOrder(_ context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
-	id := params.UUID
-	uuidFromID, err := uuid.Parse(id)
+func (h *Handler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
+	orderId := params.UUID
+	orderUUIDFromID, err := uuid.Parse(orderId)
 	if err != nil {
 		return &orderV1.BadRequestError{
-			Message:   fmt.Sprintf("invalid uuid: %s", id),
+			Message:   fmt.Sprintf("invalid uuid: %s", orderId),
 			ErrorCode: "INVALID_ORDER_UUID",
 		}, nil
 	}
 
 	h.storage.mu.RLock()
-	order, ok := h.storage.storage[uuidFromID]
+	order, ok := h.storage.storage[orderUUIDFromID]
 	h.storage.mu.RUnlock()
 	if !ok {
 		return &orderV1.NotFoundError{
@@ -282,18 +312,39 @@ func (h *Handler) PayOrder(_ context.Context, req *orderV1.PayOrderRequest, para
 
 	if order.Status == orderV1.OrderStatusPAID {
 		return &orderV1.ConflictError{
-			Message:   fmt.Sprintf("order with uuid %s already paid", uuidFromID),
+			Message:   fmt.Sprintf("order with uuid %s already paid", orderUUIDFromID),
 			ErrorCode: "ORDER_ALREADY_PAID",
 		}, nil
 	}
 
 	if order.Status == orderV1.OrderStatusCANCELLED {
 		return &orderV1.ConflictError{
-			Message:   fmt.Sprintf("order with uuid %s already cancelled", uuidFromID),
+			Message:   fmt.Sprintf("order with uuid %s already cancelled", orderUUIDFromID),
 			ErrorCode: "ORDER_ALREADY_CANCELLED",
 		}, nil
 	}
-	trUUID := uuid.New()
+	payReq := &paymentV1.PayOrderRequest{
+		PaymentMethod: paymentV1.PaymentMethod_PAYMENT_METHOD_SBP,
+		OrderUuid:     orderUUIDFromID.String(),
+		UserUuid:      req.UserUUID.Value,
+	}
+	payRes, err := h.paymentClient.client.PayOrder(ctx, payReq)
+	if err != nil {
+		log.Printf("failed to pay order: %s, %v", orderUUIDFromID, err)
+		return &orderV1.InternalServerError{
+			Message:   fmt.Sprintf("internal server error"),
+			ErrorCode: "INTERNAL_SERVER_ERROR",
+		}, nil
+	}
+	trID := payRes.TransactionUuid
+	trUUID, err := uuid.Parse(trID)
+	if err != nil {
+		log.Printf("failed to pay order: %s, %v", orderUUIDFromID, err)
+		return &orderV1.InternalServerError{
+			Message:   fmt.Sprintf("internal server error"),
+			ErrorCode: "INTERNAL_SERVER_ERROR",
+		}, nil
+	}
 	order.Status = orderV1.OrderStatusPAID
 	order.TransactionUUID = trUUID
 	order.PaymentMethod = req.PaymentMethod.Value
