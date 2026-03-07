@@ -235,13 +235,20 @@ func (h *Handler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderReque
 				r := &inventoryV1.GetPartRequest{
 					Uuid: i,
 				}
-				puuid, _ := uuid.Parse(i)
+				puuid, err := uuid.Parse(i)
+				if err != nil {
+					log.Printf("failed to parse uuid from string, part id: %s", i)
+					resCh <- ExternalGetPartResponse{
+						extErr: fmt.Errorf("create order error: %w", err),
+					}
+					return
+				}
 				resp, err := h.inventoryClient.client.GetPart(ctx, r)
 				if err != nil {
-					fmt.Printf("failed to get part with id: %s ", i)
+					log.Printf("failed to get part with id: %s ", i)
 					resCh <- ExternalGetPartResponse{
 						partUUID: puuid,
-						extErr:   fmt.Errorf("create order error: %v", err),
+						extErr:   fmt.Errorf("create order error: %w", err),
 					}
 					return
 				}
@@ -397,7 +404,7 @@ func (h *Handler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, pa
 	if err != nil {
 		log.Printf("failed to pay order: %s, %v", orderUUIDFromID, err)
 		return &orderV1.InternalServerError{
-			Message:   fmt.Sprintf("internal server error"),
+			Message:   "internal server error",
 			ErrorCode: "INTERNAL_SERVER_ERROR",
 		}, nil
 	}
@@ -406,7 +413,7 @@ func (h *Handler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, pa
 	if err != nil {
 		log.Printf("failed to pay order: %s, %v", orderUUIDFromID, err)
 		return &orderV1.InternalServerError{
-			Message:   fmt.Sprintf("internal server error"),
+			Message:   "internal server error",
 			ErrorCode: "INTERNAL_SERVER_ERROR",
 		}, nil
 	}
