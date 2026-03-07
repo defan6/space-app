@@ -234,7 +234,7 @@ func main() {
 
 		httpMux := http.NewServeMux()
 
-		httpMux.Handle("/api/v1/inventory", mux)
+		httpMux.Handle("/api/v1/", mux)
 
 		httpMux.Handle("/swagger-ui.html", fileServer)
 		httpMux.Handle("/inventory.swagger.json", fileServer)

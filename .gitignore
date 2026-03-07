@@ -4,3 +4,4 @@ bin
 node_modules
 shared/pkg
 shared/api/bundles
+inventory-service/json

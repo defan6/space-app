@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -16,6 +14,7 @@ import (
 	"time"
 
 	orderV1 "github.com/defan6/space-app/shared/pkg/openapi/order/v1"
+	inventoryV1 "github.com/defan6/space-app/shared/pkg/proto/inventory/v1"
 	paymentV1 "github.com/defan6/space-app/shared/pkg/proto/payment/v1"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -34,6 +33,13 @@ type Order struct {
 	Status          orderV1.OrderStatus
 }
 
+type ExternalGetPartResponse struct {
+	partUUID uuid.UUID
+	price    float64
+	stock    int64
+	extErr   error
+}
+
 type Cache struct {
 	storage map[uuid.UUID]*Order
 	mu      *sync.RWMutex
@@ -41,6 +47,17 @@ type Cache struct {
 
 type PaymentClient struct {
 	client paymentV1.PaymentServiceClient
+}
+
+type InventoryClient struct {
+	client inventoryV1.InventoryServiceClient
+}
+
+func NewInventoryClient(conn *grpc.ClientConn) *InventoryClient {
+	client := inventoryV1.NewInventoryServiceClient(conn)
+	return &InventoryClient{
+		client: client,
+	}
 }
 
 func NewPaymentClient(conn *grpc.ClientConn) *PaymentClient {
@@ -51,14 +68,16 @@ func NewPaymentClient(conn *grpc.ClientConn) *PaymentClient {
 }
 
 type Handler struct {
-	paymentClient *PaymentClient
-	storage       *Cache
+	paymentClient   *PaymentClient
+	inventoryClient *InventoryClient
+	storage         *Cache
 }
 
-func NewHandler(storage *Cache, paymentClient *PaymentClient) *Handler {
+func NewHandler(storage *Cache, paymentClient *PaymentClient, inventoryClient *InventoryClient) *Handler {
 	return &Handler{
-		storage:       storage,
-		paymentClient: paymentClient,
+		storage:         storage,
+		paymentClient:   paymentClient,
+		inventoryClient: inventoryClient,
 	}
 }
 
@@ -70,29 +89,41 @@ func NewCache() *Cache {
 }
 
 const (
-	port                  = 8080
-	readHeaderTimeout     = 10 * time.Second
-	shutdownTimeout       = 5 * time.Second
-	paymentServiceAddress = 50051
+	port                    = 8080
+	readHeaderTimeout       = 10 * time.Second
+	shutdownTimeout         = 5 * time.Second
+	paymentServiceAddress   = 50051
+	inventoryServiceAddress = 50052
 )
 
 func main() {
 	r := chi.NewRouter()
-	conn, err := grpc.NewClient(
+	pconn, err := grpc.NewClient(
 		fmt.Sprintf("localhost:%d", paymentServiceAddress),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Printf("failed to create new grpc client on port: %d", paymentServiceAddress)
+		log.Printf("failed to create new grpc onn on port: %d", paymentServiceAddress)
 	}
 	defer func() {
-		if cerr := conn.Close(); cerr != nil {
+		if cerr := pconn.Close(); cerr != nil {
 			log.Printf("failed to close connection on port: %d", paymentServiceAddress)
 		}
 	}()
+	iconn, err := grpc.NewClient(
+		fmt.Sprintf("localhost:%d", inventoryServiceAddress),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("failed to create new grpc conn on port: %d", inventoryServiceAddress)
+	}
+	defer func() {
+		if cerr := iconn.Close(); cerr != nil {
+			log.Printf("failed to close connection on port: %d", inventoryServiceAddress)
+		}
+	}()
 	cache := NewCache()
-	paymentClient := NewPaymentClient(conn)
-
-	h := NewHandler(cache, paymentClient)
+	paymentClient := NewPaymentClient(pconn)
+	inventoryClient := NewInventoryClient(iconn)
+	h := NewHandler(cache, paymentClient, inventoryClient)
 	orderServer, err := orderV1.NewServer(h)
 	if err != nil {
 		panic("Failed to start order server")
@@ -191,20 +222,52 @@ func (h *Handler) CancelOrder(_ context.Context, params orderV1.CancelOrderParam
 // Create Order.
 //
 // POST /api/v1/orders
-func (h *Handler) CreateOrder(_ context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
+func (h *Handler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
 	newUUID := uuid.New()
-	h.storage.mu.Lock()
-	defer h.storage.mu.Unlock()
-	maxPrice := big.NewInt(9000)
-	randomInt, err := rand.Int(rand.Reader, maxPrice)
-	if err != nil {
-		log.Printf("error generating int")
-		return &orderV1.InternalServerError{
-			Message:   "Internal Server Error",
-			ErrorCode: "INTERNAL_SERVER_ERROR",
-		}, nil
+	wg := sync.WaitGroup{}
+	resCh := make(chan ExternalGetPartResponse)
+
+	go func() {
+		for _, i := range req.PartUuids {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				r := &inventoryV1.GetPartRequest{
+					Uuid: i,
+				}
+				puuid, _ := uuid.Parse(i)
+				resp, err := h.inventoryClient.client.GetPart(ctx, r)
+				if err != nil {
+					fmt.Printf("failed to get part with id: %s ", i)
+					resCh <- ExternalGetPartResponse{
+						partUUID: puuid,
+						extErr:   fmt.Errorf("create order error: %v", err),
+					}
+					return
+				}
+				resCh <- ExternalGetPartResponse{
+					partUUID: puuid,
+					stock:    resp.StockQuantity,
+					price:    resp.Price,
+					extErr:   nil,
+				}
+			}()
+		}
+		wg.Wait()
+		close(resCh)
+	}()
+
+	var totalPrice float64
+	for v := range resCh {
+		totalPrice += v.price
+		if v.extErr != nil {
+			log.Printf("part: %s, err: %v", v.partUUID, v.extErr)
+			return &orderV1.InternalServerError{
+				Message:   "Internal Server Error",
+				ErrorCode: "INTERNAL_SERVER_ERROR",
+			}, nil
+		}
 	}
-	totalPrice := float64(randomInt.Int64())
 	userUUID, err := uuid.Parse(req.UserUUID.Value)
 	if err != nil {
 		return &orderV1.BadRequestError{
@@ -220,6 +283,8 @@ func (h *Handler) CreateOrder(_ context.Context, req *orderV1.CreateOrderRequest
 		PaymentMethod: orderV1.PaymentMethodUNKNOWN,
 		Status:        orderV1.OrderStatusPENDINGPAYMENT,
 	}
+	h.storage.mu.Lock()
+	defer h.storage.mu.Unlock()
 	h.storage.storage[newUUID] = order
 	response := &orderV1.CreateOrderResponse{
 		OrderUUID:  orderV1.NewOptString(newUUID.String()),
