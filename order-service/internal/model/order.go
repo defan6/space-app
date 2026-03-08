@@ -26,17 +26,23 @@ const (
 type CreateOrderRequest struct {
 	OrderUUID       uuid.UUID
 	UserUUID        uuid.UUID
-	Parts           []string
+	PartItems       []PartItem
 	TotalPrice      float64
 	PaymentMethod   PaymentMethod
 	TransactionUUID uuid.UUID
 	Status          OrderStatus
 }
 
+type PartItem struct {
+	PartUUID uuid.UUID
+	Quantity int64
+	Price    float64
+}
+
 type CreateOrderResponse struct {
 	OrderUUID       uuid.UUID
 	UserUUID        uuid.UUID
-	Parts           []string
+	Parts           []PartItem
 	TotalPrice      float64
 	PaymentMethod   PaymentMethod
 	TransactionUUID uuid.UUID
@@ -48,13 +54,18 @@ type CreateOrderResponse struct {
 type GetOrderResponse struct {
 	OrderUUID       uuid.UUID
 	UserUUID        uuid.UUID
-	Parts           []string
+	PartItems       []PartItem
 	TotalPrice      float64
 	PaymentMethod   PaymentMethod
 	TransactionUUID uuid.UUID
 	Status          OrderStatus
 	CreatedAt       time.Time
 	UpdatedAt       *time.Time
+}
+
+type CheckInventoryResponse struct {
+	PartItems  []PartItem
+	TotalPrice float64
 }
 
 type GetOrdersResponse struct {
@@ -76,4 +87,6 @@ type PayOrderResponse struct {
 }
 
 type CancelOrderResponse struct {
+	OrderUUID uuid.UUID
+	Status    OrderStatus
 }

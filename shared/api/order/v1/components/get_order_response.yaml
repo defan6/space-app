@@ -2,17 +2,28 @@ type: object
 properties:
   order_uuid:
     type: string
+    format: uuid
   user_uuid:
     type: string
-  part_uuids:
+    format: uuid
+  part_items:
     type: array
     items:
-      type: string
+      $ref: "./part_item.yaml"
   total_price:
     type: number
   transaction_uuid:
     type: string
+    format: uuid
   payment_method:
     $ref: "./enums/payment_method.yaml"
   status:
     $ref: "./enums/order_status.yaml"
+required:
+  - order_uuid
+  - user_uuid
+  - part_items
+  - total_price
+  - transaction_uuid
+  - payment_method
+  - status

@@ -1,15 +1,21 @@
 package order
 
 import (
-	"context"
-
-	"github.com/defan6/space-app/order-service/internal/model"
+	"github.com/defan6/space-app/order-service/internal/repository"
+	inventoryV1 "github.com/defan6/space-app/shared/pkg/proto/inventory/v1"
+	paymentV1 "github.com/defan6/space-app/shared/pkg/proto/payment/v1"
 )
 
-type OrderService interface {
-	CancelOrder(ctx context.Context, uuid string, req *model.Order) (*model.Order, error)
-	CreateOrder(ctx context.Context, uuid string, req *model.Order) (*model.Order, error)
-	GetOrder(ctx context.Context, uuid string) (*model.Order, error)
-	GetOrders(ctx context.Context) ([]*model.Order, error)
-	PayOrder(ctx context.Context, uuid string, req *model.Order) (*model.Order, error)
+type defaultOrderService struct {
+	repo            repository.Repository
+	paymentClient   paymentV1.PaymentServiceClient
+	inventoryClient inventoryV1.InventoryServiceClient
+}
+
+func NewService(repo repository.Repository, pclient paymentV1.PaymentServiceClient, iclient inventoryV1.InventoryServiceClient) *defaultOrderService {
+	return &defaultOrderService{
+		repo:            repo,
+		paymentClient:   pclient,
+		inventoryClient: iclient,
+	}
 }

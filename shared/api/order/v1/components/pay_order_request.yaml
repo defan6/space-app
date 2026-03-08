@@ -4,3 +4,7 @@ properties:
     $ref: "./enums/payment_method.yaml"
   user_uuid:
     type: string
+    format: uuid
+required:
+  - payment_method
+  - user_uuid

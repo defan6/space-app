@@ -21,7 +21,7 @@ func ConvertFromRepoOrderToGetOrderResponse(ro *repomodel.Order) *model.GetOrder
 	return &model.GetOrderResponse{
 		OrderUUID:       ro.OrderUUID,
 		UserUUID:        ro.UserUUID,
-		Parts:           ro.Parts,
+		PartItems:       ConvertFromRepoPartsToParts(ro.PartsItems),
 		TotalPrice:      ro.TotalPrice,
 		PaymentMethod:   ConvertFromRepoPaymentMethodToPaymentMethod(ro.PaymentMethod),
 		TransactionUUID: ro.TransactionUUID,
@@ -89,12 +89,42 @@ func ConvertFromCreateOrderRequestToRepoOrder(o *model.CreateOrderRequest) *repo
 	return &repomodel.Order{
 		OrderUUID:       o.OrderUUID,
 		UserUUID:        o.UserUUID,
-		Parts:           o.Parts,
+		PartsItems:      ConvertFromPartsToRepoParts(o.PartItems),
 		TotalPrice:      o.TotalPrice,
 		PaymentMethod:   ConvertFromPaymentMethodToRepoPaymentMethod(o.PaymentMethod),
 		TransactionUUID: o.TransactionUUID,
 		Status:          ConvertFromStatusToRepoStatus(o.Status),
 	}
+}
+
+func ConvertFromPartsToRepoParts(parts []model.PartItem) []repomodel.PartItem {
+	res := make([]repomodel.PartItem, 0, len(parts))
+
+	for _, part := range parts {
+		repopart := repomodel.PartItem{
+			PartUUID: part.PartUUID,
+			Quantity: part.Quantity,
+			Price:    part.Price,
+		}
+		res = append(res, repopart)
+	}
+
+	return res
+}
+
+func ConvertFromRepoPartsToParts(parts []repomodel.PartItem) []model.PartItem {
+	res := make([]model.PartItem, 0, len(parts))
+
+	for _, part := range parts {
+		repopart := model.PartItem{
+			PartUUID: part.PartUUID,
+			Quantity: part.Quantity,
+			Price:    part.Price,
+		}
+		res = append(res, repopart)
+	}
+
+	return res
 }
 
 func ConvertFromPayOrderRequestToRepoOrder(o *model.PayOrderRequest) *repomodel.Order {
@@ -117,10 +147,17 @@ func ConvertFromOrderToCreateOrderResponse(o *repomodel.Order) *model.CreateOrde
 	return &model.CreateOrderResponse{
 		OrderUUID:       o.OrderUUID,
 		UserUUID:        o.UserUUID,
-		Parts:           o.Parts,
+		Parts:           ConvertFromRepoPartsToParts(o.PartsItems),
 		TotalPrice:      o.TotalPrice,
 		PaymentMethod:   ConvertFromRepoPaymentMethodToPaymentMethod(o.PaymentMethod),
 		TransactionUUID: o.TransactionUUID,
 		Status:          ConvertFromRepoStatusToStatus(o.Status),
+	}
+}
+
+func ConvertFromOrderToCancelOrderResponse(o *repomodel.Order) *model.CancelOrderResponse {
+	return &model.CancelOrderResponse{
+		OrderUUID: o.OrderUUID,
+		Status:    ConvertFromRepoStatusToStatus(o.Status),
 	}
 }

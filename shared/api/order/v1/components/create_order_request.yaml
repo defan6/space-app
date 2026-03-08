@@ -2,7 +2,11 @@ type: object
 properties:
   user_uuid:
     type: string
-  part_uuids:
+    format: uuid
+  part_items:
     type: array
     items:
-      type: string
+      $ref: "./part_item.yaml"
+required:
+  - user_uuid
+  - part_items

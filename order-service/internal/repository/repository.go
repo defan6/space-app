@@ -3,13 +3,14 @@ package repository
 import (
 	"context"
 
-	"github.com/defan6/space-app/order-service/internal/model"
+	repomodel "github.com/defan6/space-app/order-service/internal/repository/model"
+	"github.com/google/uuid"
 )
 
 type Repository interface {
-	CancelOrder(ctx context.Context, uuid string) (*model.CancelOrderResponse, error)
-	CreateOrder(ctx context.Context, req *model.CreateOrderRequest) (*model.CreateOrderResponse, error)
-	GetOrder(ctx context.Context, uuid string) (*model.GetOrderResponse, error)
-	GetOrders(ctx context.Context) ([]*model.GetOrdersResponse, error)
-	PayOrder(ctx context.Context, req *model.PayOrderRequest) (*model.PayOrderResponse, error)
+	Save(ctx context.Context, order *repomodel.Order) (*repomodel.Order, error)
+	Get(ctx context.Context, uuid uuid.UUID) (*repomodel.Order, error)
+	GetOrders(ctx context.Context) ([]*repomodel.Order, error)
+	Update(ctx context.Context, order *repomodel.Order) (*repomodel.Order, error)
+	Exists(ctx context.Context, uuid uuid.UUID) (bool, error)
 }

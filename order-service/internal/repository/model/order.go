@@ -23,10 +23,15 @@ const (
 	PaymentMethodInvestorMoney PaymentMethod = "INVESTOR_MONEY"
 )
 
+type PartItem struct {
+	PartUUID uuid.UUID
+	Quantity int64
+	Price    float64
+}
 type Order struct {
 	OrderUUID       uuid.UUID
 	UserUUID        uuid.UUID
-	Parts           []string
+	PartsItems      []PartItem
 	TotalPrice      float64
 	PaymentMethod   PaymentMethod
 	TransactionUUID uuid.UUID

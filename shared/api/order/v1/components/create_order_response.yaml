@@ -2,5 +2,9 @@ type: object
 properties:
   order_uuid:
     type: string
+    format: uuid
   total_price:
     type: number
+required:
+  - order_uuid
+  - total_price
