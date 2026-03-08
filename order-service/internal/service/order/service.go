@@ -1,4 +1,4 @@
-package order
+package serviceorder
 
 import (
 	"github.com/defan6/space-app/order-service/internal/repository"

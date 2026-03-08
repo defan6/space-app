@@ -5,13 +5,12 @@ import (
 	"google.golang.org/grpc"
 )
 
-type grpcPaymentClient struct {
-	client paymentV1.PaymentServiceClient
+type paymentClient struct {
+	paymentV1.PaymentServiceClient
 }
 
-func NewGrpcPaymentClient(conn *grpc.ClientConn) *grpcPaymentClient {
-	client := paymentV1.NewPaymentServiceClient(conn)
-	return &grpcPaymentClient{
-		client: client,
+func NewPaymentClient(conn *grpc.ClientConn) *paymentClient {
+	return &paymentClient{
+		PaymentServiceClient: paymentV1.NewPaymentServiceClient(conn),
 	}
 }

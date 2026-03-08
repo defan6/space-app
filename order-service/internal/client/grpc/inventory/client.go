@@ -6,12 +6,11 @@ import (
 )
 
 type inventoryClient struct {
-	client inventoryV1.InventoryServiceClient
+	inventoryV1.InventoryServiceClient
 }
 
 func NewInventoryClient(conn *grpc.ClientConn) *inventoryClient {
-	client := inventoryV1.NewInventoryServiceClient(conn)
 	return &inventoryClient{
-		client: client,
+		InventoryServiceClient: inventoryV1.NewInventoryServiceClient(conn),
 	}
 }

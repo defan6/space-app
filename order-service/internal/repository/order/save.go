@@ -1,4 +1,4 @@
-package order
+package repoorder
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (imr *inMemRepo) CreateOrder(ctx context.Context, order *repomodel.Order) (*repomodel.Order, error) {
+func (imr *inMemRepo) Save(_ context.Context, order *repomodel.Order) (*repomodel.Order, error) {
 	op := "order-repo#CreateOrder"
 	ouuid := uuid.New()
 	order.OrderUUID = ouuid

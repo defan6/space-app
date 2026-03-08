@@ -1,4 +1,4 @@
-package order
+package repoorder
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (imr *inMemRepo) GetOrder(ctx context.Context, uuid uuid.UUID) (*repomodel.Order, error) {
+func (imr *inMemRepo) Get(ctx context.Context, uuid uuid.UUID) (*repomodel.Order, error) {
 	op := "order-repo#GetOrder"
 	imr.mu.RLock()
 	defer imr.mu.RUnlock()

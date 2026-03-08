@@ -1,4 +1,4 @@
-package order
+package repoorder
 
 import (
 	"sync"
@@ -12,7 +12,7 @@ type inMemRepo struct {
 	mu    *sync.RWMutex
 }
 
-func newInMemRepo() *inMemRepo {
+func NewInMemRepo() *inMemRepo {
 	return &inMemRepo{
 		cache: make(map[uuid.UUID]*repomodel.Order),
 		mu:    &sync.RWMutex{},
