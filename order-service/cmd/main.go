@@ -13,8 +13,8 @@ import (
 	"time"
 
 	apiorder "github.com/defan6/space-app/order-service/internal/api/v1/order"
-	"github.com/defan6/space-app/order-service/internal/client/grpc/inventory"
-	"github.com/defan6/space-app/order-service/internal/client/grpc/payment"
+	"github.com/defan6/space-app/order-service/internal/client/inventory"
+	"github.com/defan6/space-app/order-service/internal/client/payment"
 	"github.com/defan6/space-app/order-service/internal/repository/order"
 	serviceorder "github.com/defan6/space-app/order-service/internal/service/order"
 	orderV1 "github.com/defan6/space-app/shared/pkg/openapi/order/v1"
@@ -37,6 +37,7 @@ func main() {
 	pconn, err := grpc.NewClient(
 		fmt.Sprintf("localhost:%d", paymentServiceAddress),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if err != nil {
 		log.Printf("failed to create new grpc onn on port: %d", paymentServiceAddress)
 	}

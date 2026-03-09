@@ -12,7 +12,7 @@ import (
 func (imr *inMemRepo) Update(ctx context.Context, order *repomodel.Order) (*repomodel.Order, error) {
 	op := "order-repo#Update"
 
-	existingOrder, err := imr.GetOrder(ctx, order.OrderUUID)
+	existingOrder, err := imr.Get(ctx, order.OrderUUID)
 	if err != nil {
 		return nil, fmt.Errorf("%s:%w", op, err)
 	}

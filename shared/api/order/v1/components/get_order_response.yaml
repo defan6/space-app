@@ -9,7 +9,7 @@ properties:
   part_items:
     type: array
     items:
-      $ref: "./part_item.yaml"
+      $ref: "./part_item_response.yaml"
   total_price:
     type: number
   transaction_uuid:

@@ -6,7 +6,7 @@ properties:
   part_items:
     type: array
     items:
-      $ref: "./part_item.yaml"
+      $ref: "./part_item_request.yaml"
 required:
   - user_uuid
   - part_items

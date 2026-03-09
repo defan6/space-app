@@ -1,0 +1,11 @@
+type: object
+properties:
+  part_uuid:
+    type: string
+    format: uuid
+  quantity:
+    type: integer
+    format: int64
+required:
+  - part_uuid
+  - quantity

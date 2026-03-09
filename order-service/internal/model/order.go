@@ -6,43 +6,15 @@ import (
 	"github.com/google/uuid"
 )
 
-type OrderStatus string
-type PaymentMethod string
-
-const (
-	OrderStatusPendingPayment OrderStatus = "PENDING_PAYMENT"
-	OrderStatusPaid           OrderStatus = "PAID"
-	OrderStatusCancelled      OrderStatus = "CANCELLED"
-)
-
-const (
-	PaymentMethodUnknown       PaymentMethod = "UNKNOWN"
-	PaymentMethodCard          PaymentMethod = "CARD"
-	PaymentMethodSBP           PaymentMethod = "SBP"
-	PaymentMethodCredit        PaymentMethod = "CREDIT"
-	PaymentMethodInvestorMoney PaymentMethod = "INVESTOR_MONEY"
-)
-
 type CreateOrderRequest struct {
-	OrderUUID       uuid.UUID
-	UserUUID        uuid.UUID
-	PartItems       []PartItem
-	TotalPrice      float64
-	PaymentMethod   PaymentMethod
-	TransactionUUID uuid.UUID
-	Status          OrderStatus
-}
-
-type PartItem struct {
-	PartUUID uuid.UUID
-	Quantity int64
-	Price    float64
+	UserUUID  uuid.UUID
+	PartItems []PartItemRequest
 }
 
 type CreateOrderResponse struct {
 	OrderUUID       uuid.UUID
 	UserUUID        uuid.UUID
-	Parts           []PartItem
+	Parts           []PartItemResponse
 	TotalPrice      float64
 	PaymentMethod   PaymentMethod
 	TransactionUUID uuid.UUID
@@ -54,18 +26,13 @@ type CreateOrderResponse struct {
 type GetOrderResponse struct {
 	OrderUUID       uuid.UUID
 	UserUUID        uuid.UUID
-	PartItems       []PartItem
+	PartItems       []PartItemResponse
 	TotalPrice      float64
 	PaymentMethod   PaymentMethod
 	TransactionUUID uuid.UUID
 	Status          OrderStatus
 	CreatedAt       time.Time
 	UpdatedAt       *time.Time
-}
-
-type CheckInventoryResponse struct {
-	PartItems  []PartItem
-	TotalPrice float64
 }
 
 type GetOrdersResponse struct {
@@ -89,4 +56,9 @@ type PayOrderResponse struct {
 type CancelOrderResponse struct {
 	OrderUUID uuid.UUID
 	Status    OrderStatus
+}
+
+type CheckInventoryResponse struct {
+	PartItems  []PartInfo
+	TotalPrice float64
 }

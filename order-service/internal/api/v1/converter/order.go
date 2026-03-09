@@ -5,6 +5,7 @@ import (
 
 	"github.com/defan6/space-app/order-service/internal/model"
 	orderV1 "github.com/defan6/space-app/shared/pkg/openapi/order/v1"
+	"github.com/samber/lo"
 )
 
 func ConvertFromAPIStatusToStatus(status orderV1.OrderStatus) model.OrderStatus {
@@ -16,7 +17,7 @@ func ConvertFromAPIStatusToStatus(status orderV1.OrderStatus) model.OrderStatus 
 	case orderV1.OrderStatusPENDINGPAYMENT:
 		return model.OrderStatusPendingPayment
 	default:
-		return model.OrderStatusCancelled
+		return model.OrderStatusPendingPayment
 	}
 }
 
@@ -29,7 +30,7 @@ func ConvertFromStatusToAPIStatus(status model.OrderStatus) orderV1.OrderStatus 
 	case model.OrderStatusPendingPayment:
 		return orderV1.OrderStatusPENDINGPAYMENT
 	default:
-		return orderV1.OrderStatusCANCELLED
+		return orderV1.OrderStatusPENDINGPAYMENT
 	}
 }
 
@@ -74,11 +75,11 @@ func FromAPICreateOrderRequest(request *orderV1.CreateOrderRequest) (*model.Crea
 	}, nil
 }
 
-func FromAPIPartItems(items []orderV1.PartItem) ([]model.PartItem, error) {
-	parts := make([]model.PartItem, 0, len(items))
+func FromAPIPartItems(items []orderV1.PartItemRequest) ([]model.PartItemRequest, error) {
+	parts := make([]model.PartItemRequest, 0, len(items))
 	op := "order-api-converter#FromAPIPartItems"
 	for _, p := range items {
-		part, err := FromAPIPartItem(p)
+		part, err := FromAPIPartItemRequest(p)
 		if err != nil {
 			return nil, fmt.Errorf("%s:%w", op, err)
 		}
@@ -88,28 +89,39 @@ func FromAPIPartItems(items []orderV1.PartItem) ([]model.PartItem, error) {
 	return parts, nil
 }
 
-func FromAPIPartItem(item orderV1.PartItem) (model.PartItem, error) {
-	return model.PartItem{
+func FromAPIPartItemRequest(item orderV1.PartItemRequest) (model.PartItemRequest, error) {
+	return model.PartItemRequest{
 		PartUUID: item.GetPartUUID(),
 		Quantity: item.Quantity,
-		Price:    item.Price,
 	}, nil
 }
 
-func FromServicePartItems(items []model.PartItem) []orderV1.PartItem {
-	parts := make([]orderV1.PartItem, 0, len(items))
+func FromServicePartItemsResponse(items []model.PartItemResponse) []orderV1.PartItemResponse {
+	parts := make([]orderV1.PartItemResponse, 0, len(items))
 	for _, p := range items {
-		part := FromServicePartItem(p)
+		part := FromServicePartItemResponse(p)
 		parts = append(parts, part)
 	}
 
 	return parts
 }
 
-func FromServicePartItem(item model.PartItem) orderV1.PartItem {
-	return orderV1.PartItem{
-		PartUUID: item.PartUUID,
-		Quantity: item.Quantity,
+func FromServiceGetOrderResponse(o *model.GetOrderResponse) *orderV1.GetOrderResponse {
+	return &orderV1.GetOrderResponse{
+		OrderUUID:       o.OrderUUID,
+		UserUUID:        o.UserUUID,
+		PartItems:       FromServicePartItemsResponse(o.PartItems),
+		TotalPrice:      o.TotalPrice,
+		PaymentMethod:   ConvertFromPaymentMethodToAPIPaymentMethod(o.PaymentMethod),
+		TransactionUUID: o.TransactionUUID,
+		Status:          ConvertFromStatusToAPIStatus(o.Status),
+	}
+}
+
+func FromServicePartItemResponse(item model.PartItemResponse) orderV1.PartItemResponse {
+	return orderV1.PartItemResponse{
+		PartUUID: item.ID,
+		Quantity: item.StockQuantity,
 		Price:    item.Price,
 	}
 }
@@ -121,26 +133,14 @@ func FromServiceCreateOrderResponse(response *model.CreateOrderResponse) *orderV
 	}
 }
 
-func FromServiceGetOrderResponse(o *model.GetOrderResponse) *orderV1.GetOrderResponse {
-	return &orderV1.GetOrderResponse{
-		OrderUUID:       o.OrderUUID,
-		UserUUID:        o.UserUUID,
-		PartItems:       FromServicePartItems(o.PartItems),
-		TotalPrice:      o.TotalPrice,
-		PaymentMethod:   ConvertFromPaymentMethodToAPIPaymentMethod(o.PaymentMethod),
-		TransactionUUID: o.TransactionUUID,
-		Status:          ConvertFromStatusToAPIStatus(o.Status),
-	}
-}
-
-func FromServiceGetOrdersResponse(response *model.GetOrdersResponse) []orderV1.GetOrderResponse {
+func FromServiceGetOrdersResponse(response *model.GetOrdersResponse) *orderV1.GetOrdersResponse {
 	apiOrders := make([]orderV1.GetOrderResponse, 0, len(response.Orders))
 
 	for _, ro := range response.Orders {
 		o := FromServiceGetOrderResponse(ro)
 		apiOrders = append(apiOrders, *o)
 	}
-	return apiOrders
+	return lo.ToPtr(orderV1.GetOrdersResponse(apiOrders))
 }
 
 func FromAPIPayOrderRequest(request *orderV1.PayOrderRequest) (*model.PayOrderRequest, error) {
