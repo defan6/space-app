@@ -12,14 +12,13 @@ import (
 	"syscall"
 	"time"
 
+	paymentapi "github.com/defan6/space-app/payment-service/internal/api/v1/payment"
+	paymentservice "github.com/defan6/space-app/payment-service/internal/service/payment"
 	paymentV1 "github.com/defan6/space-app/shared/pkg/proto/payment/v1"
-	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -27,27 +26,6 @@ const (
 	httpPort        = 8082
 	shutdownTimeout = time.Second * 5
 )
-
-type PaymentService struct {
-	paymentV1.UnimplementedPaymentServiceServer
-}
-
-func NewPaymentService() *PaymentService {
-	return &PaymentService{}
-}
-
-func (p *PaymentService) PayOrder(_ context.Context, r *paymentV1.PayOrderRequest) (*paymentV1.PayOrderResponse, error) {
-	if err := r.ValidateAll(); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	timer := time.NewTimer(2 * time.Second)
-	<-timer.C
-	trUUID := uuid.New().String()
-	response := &paymentV1.PayOrderResponse{
-		TransactionUuid: trUUID,
-	}
-	return response, nil
-}
 
 func main() {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
@@ -62,9 +40,10 @@ func main() {
 
 	s := grpc.NewServer()
 
-	service := NewPaymentService()
+	pservice := paymentservice.NewDefaultPaymentService()
+	papi := paymentapi.NewPaymentAPI(pservice)
 
-	paymentV1.RegisterPaymentServiceServer(s, service)
+	paymentV1.RegisterPaymentServiceServer(s, papi)
 	reflection.Register(s)
 
 	go func() {
